@@ -13,6 +13,8 @@ import MainLayout from "../layout/MainLayout";
 import Breadcrumb from "../components/Breadcrumb";
 import GeoFiltersCard from "../components/register/GeoFiltersCard";
 import ModulesGrid from "../components/register/ModulesGrid";
+import type { ModuleCardModel } from "../components/register/ModuleCard";
+
 
 export default function RegisterRoad() {
   const navigate = useNavigate();
@@ -95,8 +97,8 @@ export default function RegisterRoad() {
       });
   }
 
-  const modules = [
-    {
+const modules: ModuleCardModel[] = [
+      {
       title: "Praroop-1 (Village Map Roads)",
       description:
         "Register existing village roads mapped on official layouts.",
