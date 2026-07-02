@@ -4,7 +4,25 @@ import Breadcrumb from "../components/Breadcrumb";
 import QuickActions from "../components/QuickActions";
 import ActivityTimeline from "../components/ActivityTimeline";
 import NotificationWidget from "../components/NotificationWidget";
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+
 export default function Home() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("ferfartoken");
+
+    if (!token) {
+      navigate("/logout?logout=true");
+      return;
+    }
+
+    localStorage.setItem("ferfartoken", token);
+    console.log("token saved", token);
+  }, [navigate]);
+
   return (
     <MainLayout>
       <Breadcrumb />
