@@ -6,6 +6,7 @@ import {
 import MainLayout from "../layout/MainLayout";
 import Breadcrumb from "../components/Breadcrumb";
 import { useRoadStore } from "../store/roadStore";
+import { getPraroopPath } from "../utils/draftHydration";
 import { useState } from "react";
 
 export default function DraftRecords() {
@@ -25,6 +26,14 @@ export default function DraftRecords() {
     A: "bg-blue-100 text-blue-700 border-blue-200",
     B: "bg-teal-100 text-teal-700 border-teal-200",
     C: "bg-purple-100 text-purple-700 border-purple-200",
+    D: "bg-orange-100 text-orange-700 border-orange-200",
+    E: "bg-red-100 text-red-700 border-red-200",
+  };
+
+  const formTypeLabel: Record<string, string> = {
+    praroop1: "Praroop-1",
+    praroop2: "Praroop-2",
+    praroop3: "Praroop-3",
   };
 
   return (
@@ -105,6 +114,11 @@ export default function DraftRecords() {
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-semibold text-amber-700">
                           Draft
                         </span>
+                        {rec.formType && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200 text-[10px] font-semibold text-slate-600">
+                            {formTypeLabel[rec.formType] ?? rec.formType}
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-[var(--text-muted)] mt-1 font-mono">
                         {rec.roadUID || "No UID assigned"}
@@ -116,7 +130,7 @@ export default function DraftRecords() {
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button
                       onClick={() =>
-                        navigate("/praroop1", {
+                        navigate(getPraroopPath(rec), {
                           state: {
                             editId: rec.id,
                             district: rec.district,

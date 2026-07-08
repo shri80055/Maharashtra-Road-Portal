@@ -1,10 +1,10 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Save, Send, X, MapPin, CheckCircle2,
-  ChevronRight, FileText, Users, Navigation,
+  ChevronRight, FileText, Navigation,
   AlertTriangle, Ruler,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import MainLayout from "../layout/MainLayout";
 import Breadcrumb from "../components/Breadcrumb";
@@ -22,6 +22,7 @@ import type { UploadedFile } from "../components/common";
 
 import { useRoadStore } from "../store/roadStore";
 import type { RoadRecord } from "../store/roadStore";
+import { fileNamesToUploadedFiles, parseMeasurement } from "../utils/draftHydration";
 
 /* ─── Static mock API data ────────────────────────── */
 const ROAD_UID_DATA: Record<string, { uid: string; surveys: string[] }[]> = {
@@ -78,10 +79,31 @@ export default function Praroop1() {
   const editRecord = editId ? drafts.find((d) => d.id === editId) : undefined;
 
   const [form, setFormData] = useState({ ...EMPTY_FORM });
+  const [hydrated, setHydrated] = useState(false);
 
   const district = editRecord?.district ?? state?.district ?? "Pune";
   const taluka   = editRecord?.taluka   ?? state?.taluka   ?? "Haveli";
   const village  = editRecord?.village  ?? state?.village  ?? "Wagholi";
+
+  useEffect(() => {
+    if (!editRecord || hydrated) return;
+
+    const length = parseMeasurement(editRecord.roadLength);
+
+    setFormData({
+      roadType: editRecord.roadType || "",
+      roadUID: editRecord.roadUID || "",
+      roadID: editRecord.roadID || "",
+      roadName: editRecord.roadName || "",
+      roadLength: length.amount,
+      lengthUnit: length.unit,
+      beneficiaryCount: editRecord.beneficiaryCount || "",
+      encroachment: editRecord.encroachment || "no",
+      encroachmentDetails: editRecord.encroachmentDetails || "",
+    });
+    setUploadedFiles(fileNamesToUploadedFiles(editRecord.fileName));
+    setHydrated(true);
+  }, [editRecord, hydrated]);
 
   /* Derived */
   const availableUIDs = form.roadType ? ROAD_UID_DATA[form.roadType] ?? [] : [];
@@ -117,16 +139,20 @@ export default function Praroop1() {
   /* Build store record */
   const buildRecord = (status: "draft" | "submitted"): RoadRecord => ({
     id: editId ?? ("RD-" + Date.now()),
+    formType: "praroop1",
     district, taluka, village,
     roadType: form.roadType,
     roadUID: form.roadUID,
+    roadID: form.roadID,
     surveyNo: surveyRows.map((r) => r.surveyNo).join(", "),
     ghatNo: "",
     roadName: form.roadName,
     roadCategory: "",
     roadLength: form.roadLength + " " + form.lengthUnit,
     breadth: "",
+    beneficiaryCount: form.beneficiaryCount,
     encroachment: form.encroachment,
+    encroachmentDetails: form.encroachmentDetails,
     fileName: uploadedFiles.map((f) => f.name).join(", "),
     savedAt: new Date().toLocaleString("en-IN"),
     status,
@@ -136,8 +162,9 @@ export default function Praroop1() {
 
   const handleDraft = () => {
     const rec = buildRecord("draft");
-    if (editId) updateDraft(editId, rec); else addDraft(rec);
-    showToast({ type: "draft", msg: "Saved to Drafts successfully!" });
+    if (editId) updateDraft(editId, rec);
+    else addDraft(rec);
+    showToast({ type: "draft", msg: editId ? "Draft updated successfully!" : "Saved to Drafts successfully!" });
     setTimeout(() => navigate("/drafts"), 1200);
   };
 
@@ -454,7 +481,7 @@ export default function Praroop1() {
           className="flex items-center gap-2 px-4 py-2.5 rounded-[10px] border border-amber-300 bg-amber-50 text-[13px] font-semibold text-amber-700 hover:bg-amber-100 transition-all"
         >
           <Save size={15} />
-          Save as Draft
+          {editId ? "Update Draft" : "Save as Draft"}
         </button>
 
         <button
@@ -462,7 +489,7 @@ export default function Praroop1() {
           className="flex items-center gap-2 px-5 py-2.5 rounded-[10px] bg-[var(--primary)] text-white text-[13px] font-semibold hover:bg-[var(--primary-dark)] transition-all shadow-sm"
         >
           <Send size={15} />
-          Submit
+          {editId ? "Update & Submit" : "Submit"}
         </button>
       </div>
 

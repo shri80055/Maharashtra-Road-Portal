@@ -47,7 +47,7 @@ const navGroups: { group: string; items: NavItem[] }[] = [
           { label: "Register New Road", icon: FilePlus, path: "/register-road" },
           { label: "Praroop-1", icon: FileText, path: "/praroop1" },
           { label: "Praroop-2", icon: FileText, path: "/praroop2" },
-          { label: "Praroop-3", icon: FileText },
+          { label: "Praroop-3", icon: FileText, path: "/praroop3" },
         ],
       },
       {

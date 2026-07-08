@@ -13,6 +13,7 @@ import MainLayout from "../layout/MainLayout";
 import Breadcrumb from "../components/Breadcrumb";
 import GeoFiltersCard from "../components/register/GeoFiltersCard";
 import ModulesGrid from "../components/register/ModulesGrid";
+import type { ModuleCardModel } from "../components/register/ModuleCard";
 
 export default function RegisterRoad() {
   const navigate = useNavigate();
@@ -82,6 +83,21 @@ export default function RegisterRoad() {
     });
   };
 
+  const handlePraroop3 = () => {
+    if (
+      !filters.district ||
+      !filters.taluka ||
+      !filters.village
+    ) {
+      alert("Please select District, Taluka and Village");
+      return;
+    }
+
+    navigate("/praroop3", {
+      state: filters,
+    });
+  };
+
 
   const handleDraftRecords = () => {
     navigate("/drafts", {
@@ -95,7 +111,7 @@ export default function RegisterRoad() {
       });
   }
 
-  const modules = [
+  const modules: ModuleCardModel[] = [
     {
       title: "Praroop-1 (Village Map Roads)",
       description:
@@ -121,7 +137,7 @@ export default function RegisterRoad() {
       icon: BookOpen,
       cta: "Open Register",
       accent: "blue",
-      onClick: () => {},
+      onClick: handlePraroop3,
     },
     {
       title: "Draft Records Registry",

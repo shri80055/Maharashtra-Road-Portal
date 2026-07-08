@@ -7,6 +7,7 @@ import Praroop1 from "../pages/Praroop1";
 import Praroop2 from "../pages/Praroop2";
 import DraftRecords from "../pages/DraftRecords";
 import SubmittedRecords from "../pages/SubmittedRecords";
+import Praroop3 from "../pages/Praroop3";
 
 export default function AppRoutes() {
   return (
@@ -34,6 +35,11 @@ export default function AppRoutes() {
       <Route
       path="/praroop2"
       element={<Praroop2 />}
+      />
+
+      <Route
+      path="/praroop3"
+      element={<Praroop3 />}
       />
 
       <Route 
