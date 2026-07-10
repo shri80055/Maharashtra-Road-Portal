@@ -1,26 +1,4 @@
-
-
-// import { useMemo, useState } from "react";
-// import {
-//   BookOpen,
-//   ClipboardList,
-//   FileCheck2,
-//   FileText,
-//   FolderOpen,
-//   Map,
-// } from "lucide-react";
-// import { useNavigate } from "react-router-dom";
-
-// import MainLayout from "../layout/MainLayout";
-// import Breadcrumb from "../components/Breadcrumb";
-// import GeoFiltersCard from "../components/register/GeoFiltersCard";
-// import ModulesGrid from "../components/register/ModulesGrid";
-// import type { ModuleCardModel } from "../components/register/ModuleCard";
-
-
-
-
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   BookOpen,
   ClipboardList,
@@ -31,28 +9,14 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import { getTalathiUser } from "../services/TalathiAuthservice";
-
 import MainLayout from "../layout/MainLayout";
 import Breadcrumb from "../components/Breadcrumb";
 import GeoFiltersCard from "../components/register/GeoFiltersCard";
 import ModulesGrid from "../components/register/ModulesGrid";
 import type { ModuleCardModel } from "../components/register/ModuleCard";
 
-type Option = {
-  value: string;
-  label: string;
-};
-
-
 export default function RegisterRoad() {
   const navigate = useNavigate();
-
-const [districtOptions,setDistrictOptions] = useState<Option[]>([]);
-
-const [talukaOptions,setTalukaOptions] = useState<Option[]>([]);
-
-const [villageOptions,setVillageOptions] = useState<Option[]>([]);
 
   const [filters, setFilters] = useState({
     district: "",
@@ -60,116 +24,34 @@ const [villageOptions,setVillageOptions] = useState<Option[]>([]);
     village: "",
   });
 
-  // const districtOptions = [
-  //   { value: "", label: "Select District" },
-  //   { value: "Pune", label: "Pune" },
-  //   { value: "Nashik", label: "Nashik" },
-  //   { value: "Nagpur", label: "Nagpur" },
-  // ];
+  const districtOptions = [
+    { value: "", label: "Select District" },
+    { value: "Pune", label: "Pune" },
+    { value: "Nashik", label: "Nashik" },
+    { value: "Nagpur", label: "Nagpur" },
+  ];
 
-  // const talukaOptions = useMemo(() => {
-  //   if (!filters.district)
-  //     return [{ value: "", label: "First select District" }];
+  const talukaOptions = useMemo(() => {
+    if (!filters.district)
+      return [{ value: "", label: "First select District" }];
 
-  //   return [
-  //     { value: "", label: "Select Taluka" },
-  //     { value: "Taluka 1", label: "Taluka 1" },
-  //     { value: "Taluka 2", label: "Taluka 2" },
-  //   ];
-  // }, [filters.district]);
+    return [
+      { value: "", label: "Select Taluka" },
+      { value: "Taluka 1", label: "Taluka 1" },
+      { value: "Taluka 2", label: "Taluka 2" },
+    ];
+  }, [filters.district]);
 
-  // const villageOptions = useMemo(() => {
-  //   if (!filters.taluka)
-  //     return [{ value: "", label: "First select Taluka" }];
+  const villageOptions = useMemo(() => {
+    if (!filters.taluka)
+      return [{ value: "", label: "First select Taluka" }];
 
-  //   return [
-  //     { value: "", label: "Select Village" },
-  //     { value: "Village 1", label: "Village 1" },
-  //     { value: "Village 2", label: "Village 2" },
-  //   ];
-  // }, [filters.taluka]);
-
-
-  useEffect(() => {
-  fetch("http://localhost:3190/ReactActive.aspx", {
-    credentials: "include",
-  }).then(() => {
-    console.log("React opened");
-  });
-
-  const logoutHandler = (event: StorageEvent) => {
-    if (event.key === "logout" && event.newValue) {
-      localStorage.removeItem("ferfartoken");
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("infouser");
-
-      navigate("/logout?logout=true");
-    }
-  };
-
-  window.addEventListener("storage", logoutHandler);
-
-  const ferfarToken = localStorage.getItem("ferfartoken");
-
-  if (!ferfarToken) {
-    console.log("Token not found");
-    navigate("/logout?logout=true");
-    return;
-  }
-
-  getTalathiUser(ferfarToken)
-   .then((response: any) => {
-      const result = response.data;
-
-      if (!result.token || !result.userInfo) {
-        navigate("/logout?logout=true");
-        return;
-      }
-
-      localStorage.setItem("access_token", result.token);
-      localStorage.setItem("infouser", JSON.stringify(result.userInfo));
-
-      const userdetails = result.userInfo;
-
-      setDistrictOptions([
-        {
-          value: userdetails.distCode,
-          label: userdetails.districtName,
-        },
-      ]);
-
-      setTalukaOptions([
-        {
-          value: userdetails.talcode,
-          label: userdetails.talukaName,
-        },
-      ]);
-
-      setVillageOptions([
-        {
-          value: userdetails.vlgCode,
-          label: userdetails.village,
-        },
-      ]);
-
-      setFilters({
-        district: userdetails.distCode,
-        taluka: userdetails.talcode,
-        village: userdetails.vlgCode,
-      });
-    })
-.catch((error: any) => {
-        console.log("LOGIN API ERROR", error.response?.data);
-      navigate("/logout?logout=true");
-    });
-
-  return () => {
-    window.removeEventListener("storage", logoutHandler);
-  };
-}, [navigate]);
-
-
-
+    return [
+      { value: "", label: "Select Village" },
+      { value: "Village 1", label: "Village 1" },
+      { value: "Village 2", label: "Village 2" },
+    ];
+  }, [filters.taluka]);
 
   const handlePraroop1 = () => {
     if (
@@ -201,6 +83,21 @@ const [villageOptions,setVillageOptions] = useState<Option[]>([]);
     });
   };
 
+  const handlePraroop3 = () => {
+    if (
+      !filters.district ||
+      !filters.taluka ||
+      !filters.village
+    ) {
+      alert("Please select District, Taluka and Village");
+      return;
+    }
+
+    navigate("/praroop3", {
+      state: filters,
+    });
+  };
+
 
   const handleDraftRecords = () => {
     navigate("/drafts", {
@@ -214,8 +111,8 @@ const [villageOptions,setVillageOptions] = useState<Option[]>([]);
       });
   }
 
-const modules: ModuleCardModel[] = [
-      {
+  const modules: ModuleCardModel[] = [
+    {
       title: "Praroop-1 (Village Map Roads)",
       description:
         "Register existing village roads mapped on official layouts.",
@@ -240,7 +137,7 @@ const modules: ModuleCardModel[] = [
       icon: BookOpen,
       cta: "Open Register",
       accent: "blue",
-      onClick: () => {},
+      onClick: handlePraroop3,
     },
     {
       title: "Draft Records Registry",

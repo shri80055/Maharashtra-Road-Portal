@@ -1,6 +1,8 @@
 import { Bell, Search, ChevronDown } from "lucide-react";
+import { useAuthStore } from "../store/authStore";
 
 export default function Header() {
+  const userInfo = useAuthStore((state) => state.userInfo);
   return (
     <header className="app-header-bar">
       <div className="app-header-search">
@@ -30,8 +32,17 @@ export default function Header() {
             <span className="app-header-avatar-text">T</span>
           </div>
           <div className="app-header-user-info">
-            <p className="app-header-user-name">Talathi Admin</p>
-            <p className="app-header-user-meta">Pune District</p>
+            <p className="app-sidebar-profile-name">
+              {userInfo?.sevarthName ?? "Talathi Admin"}
+            </p>
+
+            <p className="app-sidebar-profile-meta">
+              {userInfo?.sevarth_id}
+            </p>
+
+            <p className="app-sidebar-profile-meta">
+              {userInfo?.talukaName}, {userInfo?.districtName}
+            </p>
           </div>
           <ChevronDown size={13} className="app-header-user-caret" />
         </button>

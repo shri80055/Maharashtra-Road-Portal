@@ -14,6 +14,7 @@ import {
   Map,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuthStore } from "../store/authStore";
 
 interface SubItem {
   label: string;
@@ -31,12 +32,12 @@ interface NavItem {
 }
 
 const navGroups: { group: string; items: NavItem[] }[] = [
-  {
-    group: "Main",
-    items: [
-      { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    ],
-  },
+  // {
+  //   group: "Main",
+  //   items: [
+  //     { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+  //   ],
+  // },
   {
     group: "Road Records",
     items: [
@@ -47,7 +48,7 @@ const navGroups: { group: string; items: NavItem[] }[] = [
           { label: "Register New Road", icon: FilePlus, path: "/register-road" },
           { label: "Praroop-1", icon: FileText, path: "/praroop1" },
           { label: "Praroop-2", icon: FileText, path: "/praroop2" },
-          { label: "Praroop-3", icon: FileText },
+          { label: "Praroop-3", icon: FileText, path: "/praroop3" },
         ],
       },
       {
@@ -56,7 +57,7 @@ const navGroups: { group: string; items: NavItem[] }[] = [
         subItems: [
           { label: "Draft Records", icon: FolderOpen, badge: "2", path: "/drafts" },
           { label: "Submitted", icon: FileCheck, path: "/submitted" },
-          { label: "Under Review", icon: FileSearch, badge: "5" },
+          // { label: "Under Review", icon: FileSearch, badge: "5" },
         ],
       },
     ],
@@ -76,6 +77,9 @@ export default function Sidebar() {
   };
 
   const isSubActive = (path?: string) => path && location.pathname === path;
+
+
+const userInfo = useAuthStore((state) => state.userInfo);
 
   return (
     <aside
@@ -185,8 +189,17 @@ export default function Sidebar() {
               <span className="app-sidebar-avatar-text">T</span>
             </div>
             <div className="app-sidebar-profile-info">
-              <p className="app-sidebar-profile-name">Talathi Admin</p>
-              <p className="app-sidebar-profile-meta">Pune District</p>
+             <p className="app-sidebar-profile-name">
+  {userInfo?.sevarthName ?? "Talathi Admin"}
+</p>
+
+<p className="app-sidebar-profile-meta">
+  {userInfo?.sevarth_id}
+</p>
+
+<p className="app-sidebar-profile-meta">
+  {userInfo?.talukaName}, {userInfo?.districtName}
+</p>
             </div>
             <ChevronRight size={13} className="app-sidebar-profile-caret" />
           </div>

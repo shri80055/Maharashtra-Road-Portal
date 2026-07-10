@@ -1,22 +1,102 @@
-// import axios from "axios";
+import api from "./api";
 
-// export const getTalathiUser = (ferfarToken: string) => {
-//   return axios.get("https://localhost:7094/api/TalathiUsers/GetUserInfo", {
-//     params: {
-//       token: ferfarToken,
-//     },
-//   });
-// };
+export interface TalathiUserInfo {
+  distCode: string;
+  districtName: string;
+  talcode: string;
+  talukaName: string;
+  vlgCode: string;
+  village: string;
+  lgdCode: string;
+  sevarth_id: string;
+  sevarthName: string;
+  [key: string]: unknown;
+}
+
+interface TalathiLoginApiResponse {
+  token: string;
+  userInfo: TalathiUserInfo;
+}
+
+export interface TalathiAuthResponse {
+  isSuccess?: boolean;
+  data: TalathiLoginApiResponse;
+  message?: string;
+}
+export class TalathiAuthError extends Error {
+  readonly code:
+    | "TOKEN_MISSING"
+    | "INVALID_RESPONSE"
+    | "SESSION_EXPIRED"
+    | "SERVER_ERROR";
+
+  constructor(
+    code:
+      | "TOKEN_MISSING"
+      | "INVALID_RESPONSE"
+      | "SESSION_EXPIRED"
+      | "SERVER_ERROR",
+    message: string
+  ) {
+    super(message);
+
+    this.name = "TalathiAuthError";
+    this.code = code;
+  }
+}
 
 
- import axios from "axios";
+export const getTalathiUser = async (
+  ferfarToken: string
+): Promise<TalathiLoginApiResponse> => {
+  if (!ferfarToken?.trim()) {
+    throw new TalathiAuthError(
+      "TOKEN_MISSING",
+      "Authentication token not found. Please return to the e-Ferfar Portal and access this application again."
+    );
+  }
 
-//  const API_URL ="http://localhost:5152/api/talathiusers/login";
+  try {
+    const response = await api.get<TalathiAuthResponse>(
+      "/api/TalathiUsers/login",
+      {
+        params: {
+          Eferfar: ferfarToken,
+        },
+        skipAuth: true,
+      }
+    );
 
- const API_URL = "https://localhost:7094/api/TalathiUsers/GetUserInfo",
+    const result = response.data;
 
- export const getTalathiUser = (fertoken:string)=>{
+    if (
+      
+      !result.token ||
+      !result.userInfo
+    ) {
+      throw new TalathiAuthError(
+        "INVALID_RESPONSE",
+        "Unable to validate your session."
+      );
+    }
 
-     return axios.get(API_URL, { params:{Eferfar:fertoken} });
+    return result;
+  } catch (error: any) {
+    if (error instanceof TalathiAuthError) {
+      throw error;
+    }
 
- };
+    if (error?.response?.status === 401) {
+      throw new TalathiAuthError(
+        "SESSION_EXPIRED",
+        "Your authenticated session has expired."
+      );
+    }
+
+    throw new TalathiAuthError(
+      "SERVER_ERROR",
+      error?.response?.data?.message ??
+        "Unable to connect to the authentication server."
+    );
+  }
+};

@@ -1,8 +1,8 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Save, Send, X, MapPin, CheckCircle2, ChevronRight,
-  FileText, Users, Navigation, AlertTriangle, Ruler,
-  Search, Plus, Trash2,
+  FileText, Navigation, AlertTriangle, Ruler,
+  Search, Plus, Trash2, ChevronDown,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -13,7 +13,6 @@ import {
   RadioCard,
   RadioGroup,
   TextArea,
-  NumberStepper,
   InputWithUnit,
   FileUpload,
 } from "../components/common";
@@ -25,15 +24,9 @@ import MultiSelectDropdown from "../components/common/Multiselectdropdown";
 import {
   fileNamesToUploadedFiles,
   parseMeasurement,
-  surveyNosToRows,
 } from "../utils/draftHydration";
 
 /* ─── Static mock data ────────────────────────────── */
-/**
- * For each Road Type → list of UIDs.
- * For each UID → map of parent survey keys → sub-survey array.
- * When user types "1" and searches → returns sub-surveys like 1/1, 1/2, 1/2/3 …
- */
 const SURVEY_SUB_DATA: Record<string, string[]> = {
   "1":   ["1/1", "1/2", "1/3", "1/2/1", "1/2/2", "1/3/1"],
   "45":  ["45/1A", "45/1B", "45/2", "45/2/1", "45/3"],
@@ -43,43 +36,56 @@ const SURVEY_SUB_DATA: Record<string, string[]> = {
   "305": ["305/1", "305/2", "305/2/1", "305/3"],
 };
 
+/* All 5 road types for Praroop-3 */
 const ROAD_TYPE_META: Record<
   string,
   { label: string; subtitle: string; color: string; bg: string; border: string }
 > = {
-  D: {
-    label: "Road Type D",
-    subtitle: "Non-mapped Village Roads (गाव नकाशावर नसलेले रस्ते)",
-    color: "#2563eb",
-    bg: "#eff6ff",
-    border: "#bfdbfe",
-  },
-  E: {
-    label: "Road Type E",
-    subtitle: "Forest / Govt Land Roads (वन / शासकीय जमीन रस्ते)",
-    color: "#0b7a75",
-    bg: "#ecfdf5",
-    border: "#6ee7b7",
-  },
+  A: { label: "Road Type A", subtitle: "Village Map Roads (गाव नकाशा रस्ते)",            color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe" },
+  B: { label: "Road Type B", subtitle: "Village Connectors (गावांना जोडणारे रस्ते)",      color: "#0b7a75", bg: "#ecfdf5", border: "#6ee7b7" },
+  C: { label: "Road Type C", subtitle: "Inter-village Paths (अंतर-ग्राम मार्ग)",          color: "#7c3aed", bg: "#f5f3ff", border: "#c4b5fd" },
+  D: { label: "Road Type D", subtitle: "Non-mapped Village Roads (नकाशा नसलेले रस्ते)",   color: "#d97706", bg: "#fffbeb", border: "#fde68a" },
+  E: { label: "Road Type E", subtitle: "Forest / Govt Land Roads (वन / शासकीय जमीन)",    color: "#dc2626", bg: "#fff5f5", border: "#fecaca" },
 };
 
-/* ─── Survey row type (added to table) ───────────── */
+/* Part options */
+const PART_OPTIONS = [
+  { value: "part1", title: "Part 1",  subtitle: "भाग १ — Primary Section",   color: "#0b7a75", bg: "#ecfdf5", border: "#6ee7b7" },
+  { value: "part2", title: "Part 2",  subtitle: "भाग २ — Secondary Section", color: "#2563eb", bg: "#eff6ff", border: "#bfdbfe" },
+  { value: "part3", title: "Part 3",  subtitle: "भाग ३ — Tertiary Section",  color: "#7c3aed", bg: "#f5f3ff", border: "#c4b5fd" },
+];
+
+/* Road direction options */
+const DIRECTION_OPTIONS = [
+  { value: "",      label: "— Select Direction —" },
+  { value: "north", label: "North (उत्तर)" },
+  { value: "south", label: "South (दक्षिण)" },
+  { value: "east",  label: "East (पूर्व)" },
+  { value: "west",  label: "West (पश्चिम)" },
+];
+
+/* ─── Types ───────────────────────────────────────── */
 interface SurveyRow {
   id: string;
   surveyNo: string;
   roadType: string;
-  roadID: string;
 }
 
-/* ─── Form state ──────────────────────────────────── */
 const EMPTY_FORM = {
+  part: "",
   roadType: "",
   roadID: "",
   surveyQuery: "",
   roadName: "",
+  roadDirection: "",
   roadLength: "",
-  lengthUnit: "",
-  beneficiaryCount: "",
+  lengthUnit: "m",
+  roadWidth: "",
+  widthUnit: "m",
+  order: "",
+  termsandconditions: "",
+  tenure: "",
+  remarks: "",
   encroachment: "no",
   encroachmentDetails: "",
 };
@@ -88,16 +94,14 @@ type Toast = { type: "success" | "draft"; msg: string } | null;
 type CardColor = "teal" | "blue" | "purple" | "amber";
 
 /* ─── Helpers ─────────────────────────────────────── */
-function generateRoadID(roadType: string) {
-  return `RD-${roadType}-${Date.now().toString().slice(-6)}`;
+function generateRoadID(part: string, roadType: string) {
+  return `RD-P${part.slice(-1)}-${roadType}-${Date.now().toString().slice(-5)}`;
 }
 
 function getSubSurveys(query: string): string[] {
   const q = query.trim();
   if (!q) return [];
-  // exact key match first
   if (SURVEY_SUB_DATA[q]) return SURVEY_SUB_DATA[q];
-  // prefix match: any key that starts with the query
   const matches: string[] = [];
   for (const [key, subs] of Object.entries(SURVEY_SUB_DATA)) {
     if (key.startsWith(q)) matches.push(...subs);
@@ -106,7 +110,7 @@ function getSubSurveys(query: string): string[] {
 }
 
 /* ─── Page ────────────────────────────────────────── */
-export default function Praroop2() {
+export default function Praroop3() {
   const { state } = useLocation();
   const navigate = useNavigate();
   const { addDraft, updateDraft, submitRecord, drafts } = useRoadStore();
@@ -135,33 +139,57 @@ export default function Praroop2() {
     if (!editRecord || hydrated) return;
 
     const length = parseMeasurement(editRecord.roadLength);
+    const width = parseMeasurement(editRecord.breadth);
     const restoredRoadID = editRecord.roadID || editRecord.roadUID || "";
 
     setFormData({
+      part: editRecord.ghatNo || "",
       roadType: editRecord.roadType || "",
       roadID: restoredRoadID,
       surveyQuery: "",
       roadName: editRecord.roadName || "",
+      roadDirection: editRecord.roadCategory || "",
       roadLength: length.amount,
       lengthUnit: length.unit,
-      beneficiaryCount: editRecord.beneficiaryCount || "",
+      roadWidth: width.amount,
+      widthUnit: width.unit,
+      order: editRecord.order || "",
+      termsandconditions: editRecord.termsandconditions || "",
+      tenure: editRecord.tenure || "",
+      remarks: editRecord.remarks || "",
       encroachment: editRecord.encroachment || "no",
       encroachmentDetails: editRecord.encroachmentDetails || "",
     });
+
+    const surveys = editRecord.surveyNo
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
     setSurveyTableRows(
-      surveyNosToRows(editRecord.surveyNo, editRecord.roadType, restoredRoadID),
+      surveys.map((surveyNo, index) => ({
+        id: `restored-${index}-${surveyNo}`,
+        surveyNo,
+        roadType: editRecord.roadType,
+      })),
     );
     setUploadedFiles(fileNamesToUploadedFiles(editRecord.fileName));
-    setSearchDone(editRecord.surveyNo.trim().length > 0);
+    setSearchDone(surveys.length > 0);
     setHydrated(true);
   }, [editRecord, hydrated]);
 
   const setField = <K extends keyof typeof EMPTY_FORM>(k: K, v: string) =>
     setFormData((p) => ({ ...p, [k]: v }));
 
-  /* Road type change → auto-generate Road ID immediately, reset survey state */
+  /* Part change → regenerate Road ID if road type already set */
+  const handlePartChange = (part: string) => {
+    const autoID = part && form.roadType ? generateRoadID(part, form.roadType) : "";
+    setFormData((p) => ({ ...p, part, roadID: autoID }));
+  };
+
+  /* Road type change → auto-generate Road ID (needs part too), reset survey */
   const handleRoadTypeChange = (type: string) => {
-    const autoID = type ? generateRoadID(type) : "";
+    const autoID = type && form.part ? generateRoadID(form.part, type) : "";
     setFormData((p) => ({ ...p, roadType: type, roadID: autoID, surveyQuery: "" }));
     setSubSurveyOptions([]);
     setSelectedSubSurveys([]);
@@ -169,7 +197,7 @@ export default function Praroop2() {
     setSearchDone(false);
   };
 
-  /* Survey number search → populate multi-select */
+  /* Survey search */
   const handleSurveySearch = () => {
     const subs = getSubSurveys(form.surveyQuery);
     setSubSurveyOptions(subs.map((s) => ({ label: s, value: s })));
@@ -177,44 +205,42 @@ export default function Praroop2() {
     setSearchDone(true);
   };
 
-  /* Add selected sub-surveys to the table */
+  /* Add to table */
   const handleAddToTable = () => {
     if (!selectedSubSurveys.length) return;
     const newRows: SurveyRow[] = selectedSubSurveys
       .filter((s) => !surveyTableRows.some((r) => r.surveyNo === s))
-      .map((s) => ({
-        id: `${s}-${Date.now()}`,
-        surveyNo: s,
-        roadType: form.roadType,
-        roadID: form.roadID,
-      }));
+      .map((s) => ({ id: `${s}-${Date.now()}`, surveyNo: s, roadType: form.roadType }));
     setSurveyTableRows((p) => [...p, ...newRows]);
     setSelectedSubSurveys([]);
   };
 
-  /* Delete row from table */
   const handleDeleteRow = (id: string) =>
     setSurveyTableRows((p) => p.filter((r) => r.id !== id));
 
   const showToast = (t: Toast) => { setToast(t); setTimeout(() => setToast(null), 3000); };
 
-  const handleFilesAdd  = (files: UploadedFile[]) => setUploadedFiles((p) => [...p, ...files]);
+  const handleFilesAdd   = (files: UploadedFile[]) => setUploadedFiles((p) => [...p, ...files]);
   const handleFileRemove = (idx: number) => setUploadedFiles((p) => p.filter((_, i) => i !== idx));
 
   const buildRecord = (status: "draft" | "submitted"): RoadRecord => ({
     id: editId ?? "RD-" + Date.now(),
-    formType: "praroop2",
+    formType: "praroop3",
     district, taluka, village,
     roadType: form.roadType,
     roadUID: form.roadID,
     roadID: form.roadID,
     surveyNo: surveyTableRows.map((r) => r.surveyNo).join(", "),
-    ghatNo: "",
+    ghatNo: form.part,
     roadName: form.roadName,
-    roadCategory: "",
+    roadCategory: form.roadDirection,
     roadLength: form.roadLength + " " + form.lengthUnit,
-    breadth: "",
-    beneficiaryCount: form.beneficiaryCount,
+    breadth: form.roadWidth + " " + form.widthUnit,
+    beneficiaryCount: "",
+    order: form.order,
+    termsandconditions: form.termsandconditions,
+    tenure: form.tenure,
+    remarks: form.remarks,
     encroachment: form.encroachment,
     encroachmentDetails: form.encroachmentDetails,
     fileName: uploadedFiles.map((f) => f.name).join(", "),
@@ -246,8 +272,13 @@ export default function Praroop2() {
     setTimeout(() => navigate("/submitted"), 1200);
   };
 
-  const canSearch = form.roadType !== "" && form.surveyQuery.trim().length > 0;
-  const canAdd    = selectedSubSurveys.length > 0;
+  /* Road ID generates only when BOTH part + roadType are selected */
+  const step2Unlocked = form.roadType !== "";
+  const canSearch     = step2Unlocked && form.surveyQuery.trim().length > 0;
+  const canAdd        = selectedSubSurveys.length > 0;
+
+  /* Shared input class */
+  const selectCls = "w-full h-[42px] pl-3 pr-9 text-[13px] rounded-[10px] border border-[var(--border)] bg-[#f8fafc] text-[var(--text-primary)] focus:border-[var(--primary)] focus:bg-white outline-none appearance-none cursor-pointer transition-all";
 
   return (
     <MainLayout>
@@ -296,7 +327,7 @@ export default function Praroop2() {
         </div>
       )}
 
-      <Breadcrumb crumbs={[{ label: "Road Registration" }, { label: "Praroop-2" }]} />
+      <Breadcrumb crumbs={[{ label: "Road Registration" }, { label: "Praroop-3" }]} />
 
       {/* ── Page Header ── */}
       <div className="mt-3 mb-5">
@@ -307,9 +338,9 @@ export default function Praroop2() {
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-[22px] font-bold text-[var(--text-primary)] leading-tight">Praroop-2</h1>
+            <h1 className="text-[22px] font-bold text-[var(--text-primary)] leading-tight">Praroop-3</h1>
             <p className="text-[12px] text-[var(--text-muted)] mt-0.5">
-              Non-Mapped Road Registration Form (गाव नकाशावर नसलेले रस्ते नोंदणी)
+              Village Sample Road Registration Form (गाव नमुना १(फ) मधील भाग क ते ई)
             </p>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-[var(--border)] bg-white text-[11px] font-semibold text-[var(--text-muted)]">
@@ -334,16 +365,29 @@ export default function Praroop2() {
           </div>
         </SectionCard>
 
-        {/* ── STEP 2: Road Type + Survey Import ── */}
-        <SectionCard step={2} icon={<Navigation size={15} />} title="Road Type & Survey Import" subtitle="Select road type then search and add survey numbers" color="blue">
+        {/* ── STEP 2: Part + Road Type + Road ID + Survey Import ── */}
+        <SectionCard step={2} icon={<Navigation size={15} />} title="Part, Road Type & Survey Import" subtitle="Select part and road type, then search and add survey numbers" color="blue">
 
-          {/* Row 1 — Road Type + Road ID side by side */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-5 pb-5 border-b border-[var(--border)]">
+          {/* Row A — Part selection (3 cards) */}
+          <div className="mb-5 pb-5 border-b border-[var(--border)]">
+            <RadioCard
+              label="Part"
+              labelMarathi="भाग"
+              required
+              columns={3}
+              options={PART_OPTIONS}
+              value={form.part}
+              onChange={handlePartChange}
+            />
+          </div>
+
+          {/* Row B — Road Type (5 cards) + Road ID */}
+          <div className="grid grid-cols-[1fr_240px] gap-5 mb-5 pb-5 border-b border-[var(--border)]">
             <RadioCard
               label="Road Type"
               labelMarathi="रस्त्याचा प्रकार"
               required
-              columns={2}
+              columns={5}
               options={Object.entries(ROAD_TYPE_META).map(([val, m]) => ({
                 value: val, title: m.label, subtitle: m.subtitle,
                 color: m.color, bg: m.bg, border: m.border,
@@ -352,7 +396,7 @@ export default function Praroop2() {
               onChange={handleRoadTypeChange}
             />
 
-            {/* Road ID — auto-generated as soon as road type picked */}
+            {/* Road ID — auto-generated when BOTH part + road type selected */}
             <div className="flex flex-col justify-end">
               <InputBox
                 label="Road ID"
@@ -360,18 +404,26 @@ export default function Praroop2() {
                 autoGenerated
                 value={form.roadID}
                 readOnly
-                placeholder="Select Road Type to generate"
-                hint="Auto-generated on Road Type selection"
+                placeholder={
+                  !form.part && !form.roadType
+                    ? "Select Part & Road Type"
+                    : !form.part
+                    ? "Select Part first"
+                    : !form.roadType
+                    ? "Select Road Type"
+                    : ""
+                }
+                hint="Auto-generated from Part + Road Type"
               />
             </div>
           </div>
 
-          {/* Row 2 — Survey Number Search */}
+          {/* Row C — Survey Number Search */}
           <div className="mb-4">
-          <div className="grid grid-cols-4 gap-4">
-            <div className="flex col-span-1 gap-1.5">
-               {/* Survey no input */}
-              <div className=" flex-shrink-0">
+            <div className="flex items-end gap-3">
+
+              {/* Survey no input */}
+              <div className="w-52 flex-shrink-0">
                 <label className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)] mb-1.5 block">
                   Survey No. <span className="text-[var(--text-muted)] normal-case font-normal tracking-normal">(सर्व्हे नं.)</span>
                 </label>
@@ -381,30 +433,28 @@ export default function Praroop2() {
                   onChange={(e) => { setField("surveyQuery", e.target.value); setSearchDone(false); }}
                   onKeyDown={(e) => e.key === "Enter" && canSearch && handleSurveySearch()}
                   placeholder="e.g. 1 or 45"
-                  disabled={!form.roadType}
+                  disabled={!step2Unlocked}
                   className={[
-                    "w-[300px] h-[42px] px-3 text-[13px] rounded-[10px] border outline-none transition-all",
-                    !form.roadType
+                    "w-full h-[42px] px-3 text-[13px] rounded-[10px] border outline-none transition-all",
+                    !step2Unlocked
                       ? "bg-[#f1f5f9] border-[var(--border)] text-[var(--text-muted)] cursor-not-allowed"
                       : "bg-[#f8fafc] border-[var(--border)] text-[var(--text-primary)] focus:border-[var(--primary)] focus:bg-white",
                   ].join(" ")}
                 />
               </div>
-            </div>
-            <div className="flex col-span-1 gap-1.5">
+
               {/* Search btn */}
               <button
                 onClick={handleSurveySearch}
                 disabled={!canSearch}
-                className="flex items-center gap-2 h-[42px] px-4 mt-6 rounded-[10px] bg-[var(--primary)] text-white text-[13px] font-semibold hover:bg-[var(--primary-dark)] disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
+                className="flex items-center gap-2 h-[42px] px-4 rounded-[10px] bg-[var(--primary)] text-white text-[13px] font-semibold hover:bg-[var(--primary-dark)] disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0"
               >
                 <Search size={14} />
                 Search
               </button>
-            </div>
-            <div className="flex col-span-1 gap-1.5">
-              {/* Multi-select dropdown */}
-              <div className="flex flex-col gap-1.5">
+
+              {/* Multi-select */}
+              <div className="flex-1">
                 <MultiSelectDropdown
                   label="Sub Survey Numbers"
                   labelMarathi="उप सर्व्हे क्रमांक"
@@ -423,26 +473,20 @@ export default function Praroop2() {
                   hint={searchDone && subSurveyOptions.length > 0 ? `${subSurveyOptions.length} sub-survey numbers found` : undefined}
                 />
               </div>
-            </div>
-            <div className="flex col-span-1 gap-1.5">
+
               {/* Add btn */}
               <button
                 onClick={handleAddToTable}
                 disabled={!canAdd}
-                className="flex items-center gap-2 h-[42px] px-4 rounded-[10px] border-2 border-[var(--primary)] text-[var(--primary)] bg-[var(--primary-light,#ecfdf5)] text-[13px] font-semibold hover:bg-[var(--primary)] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0 mt-[18px]"
+                className="flex items-center gap-2 h-[42px] px-4 rounded-[10px] border-2 border-[var(--primary)] text-[var(--primary)] bg-[#ecfdf5] text-[13px] font-semibold hover:bg-[var(--primary)] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all flex-shrink-0 mt-[18px]"
               >
                 <Plus size={14} />
                 Add
               </button>
             </div>
 
-            <div className="flex col-span-2 gap-1.5"></div> 
-          </div>
-
-           
-
-            {/* Status hint below search row */}
-            {!form.roadType && (
+            {/* Status hints */}
+            {!step2Unlocked && (
               <p className="mt-2 text-[11px] text-[var(--text-muted)] flex items-center gap-1.5">
                 <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400" />
                 Select Road Type above before searching survey numbers
@@ -462,56 +506,43 @@ export default function Praroop2() {
             )}
           </div>
 
-          {/* ── Survey Table ── */}
+          {/* Survey Table */}
           {surveyTableRows.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-[var(--text-muted)]">
-                  Added Survey Numbers
-                </p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-[var(--text-muted)]">Added Survey Numbers</p>
                 <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--primary)] text-white text-[10px] font-bold">
                   {surveyTableRows.length}
                 </span>
               </div>
               <div className="border border-[var(--border)] rounded-xl overflow-hidden">
-                {/* Head */}
-                <div className="grid grid-cols-[1fr_1fr_1fr_1fr_80px] bg-[#f8fafc] border-b border-[var(--border)]">
-                  {["Sr.", "Survey / Sub No.", "Road Type", "Road ID", "Action"].map((h) => (
+                <div className="grid grid-cols-[48px_1fr_1fr_80px] bg-[#f8fafc] border-b border-[var(--border)]">
+                  {["Sr.", "Survey / Sub No.", "Road Type", "Action"].map((h) => (
                     <div key={h} className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.08em] text-[var(--text-muted)]">{h}</div>
                   ))}
                 </div>
-                {/* Rows */}
                 {surveyTableRows.map((row, i) => {
                   const meta = ROAD_TYPE_META[row.roadType];
                   return (
                     <div
                       key={row.id}
-                      className={"grid grid-cols-[1fr_1fr_1fr_1fr_80px] items-center group " + (i < surveyTableRows.length - 1 ? "border-b border-[var(--border)]" : "")}
+                      className={"grid grid-cols-[48px_1fr_1fr_80px] items-center " + (i < surveyTableRows.length - 1 ? "border-b border-[var(--border)]" : "")}
                     >
-                      <div className="px-4 py-3 text-[12px] text-[var(--text-muted)] font-mono">
-                        {String(i + 1).padStart(2, "0")}
-                      </div>
-                      <div className="px-4 py-3 text-[12px] font-semibold text-[var(--text-primary)] font-mono">
-                        {row.surveyNo}
-                      </div>
+                      <div className="px-4 py-3 text-[12px] text-[var(--text-muted)] font-mono">{String(i + 1).padStart(2, "0")}</div>
+                      <div className="px-4 py-3 text-[12px] font-semibold text-[var(--text-primary)] font-mono">{row.surveyNo}</div>
                       <div className="px-4 py-3">
                         {meta && (
-                          <span
-                            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold border"
-                            style={{ background: meta.bg, borderColor: meta.border, color: meta.color }}
-                          >
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold border"
+                            style={{ background: meta.bg, borderColor: meta.border, color: meta.color }}>
                             Type {row.roadType}
                           </span>
                         )}
-                      </div>
-                      <div className="px-4 py-3 text-[12px] font-semibold text-[var(--text-primary)] font-mono">
-                        {row.roadID}
                       </div>
                       <div className="px-3 py-3">
                         <button
                           onClick={() => handleDeleteRow(row.id)}
                           className="w-8 h-8 flex items-center justify-center rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:border-red-300 hover:text-red-500 hover:bg-red-50 transition-all"
-                          title="Remove this survey number"
+                          title="Remove"
                         >
                           <Trash2 size={13} />
                         </button>
@@ -524,7 +555,7 @@ export default function Praroop2() {
           )}
 
           {/* Empty table hint */}
-          {form.roadType && surveyTableRows.length === 0 && (
+          {step2Unlocked && surveyTableRows.length === 0 && (
             <div className="flex flex-col items-center justify-center gap-2 h-[80px] border-2 border-dashed border-[var(--border)] rounded-xl bg-[#fafbfc] mt-4">
               <p className="text-[12px] text-[var(--text-muted)]">No survey numbers added yet</p>
               <p className="text-[11px] text-[var(--text-muted)] opacity-60">Search → select sub-surveys → click Add</p>
@@ -533,9 +564,11 @@ export default function Praroop2() {
         </SectionCard>
 
         {/* ── STEP 3: Road Details ── */}
-        {form.roadType && (
-          <SectionCard step={3} icon={<Ruler size={15} />} title="Road Details" subtitle="रस्त्याची माहिती — name and measurements" color="teal">
-            <div className="grid grid-cols-3 gap-4">
+        {step2Unlocked && (
+          <SectionCard step={3} icon={<Ruler size={15} />} title="Road Details" subtitle="रस्त्याची माहिती — name, direction, length, and width" color="teal">
+            <div className="grid grid-cols-2 gap-4">
+
+              {/* Road Name */}
               <InputBox
                 label="Road Name"
                 labelMarathi="रस्त्याचे नाव"
@@ -543,9 +576,33 @@ export default function Praroop2() {
                 placeholder="Enter road name"
                 onChange={(e) => setField("roadName", e.target.value)}
               />
+
+              {/* Road Direction — custom dropdown using SelectInput pattern */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--text-secondary)]">
+                    Road Direction
+                  </span>
+                  <span className="text-[11px] text-[var(--text-muted)]">(रस्त्याची दिशा)</span>
+                </div>
+                <div className="relative">
+                  <select
+                    value={form.roadDirection}
+                    onChange={(e) => setField("roadDirection", e.target.value)}
+                    className={selectCls}
+                  >
+                    {DIRECTION_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Road Length + unit */}
               <InputWithUnit
-                label="Estimated Road Length"
-                labelMarathi="रस्त्याची अंदाजित लांबी"
+                label="Road Length"
+                labelMarathi="रस्त्याची लांबी"
                 value={form.roadLength}
                 onValueChange={(v) => setField("roadLength", v)}
                 unit={form.lengthUnit}
@@ -555,23 +612,61 @@ export default function Praroop2() {
                 min={0}
                 step={0.01}
               />
-              <NumberStepper
-                label="Beneficiary Farmer Count"
-                labelMarathi="लाभार्थी शेतकऱ्यांची संख्या"
-                value={form.beneficiaryCount}
-                onChange={(v) => setField("beneficiaryCount", v)}
+
+              {/* Road Width + unit */}
+              <InputWithUnit
+                label="Road Width"
+                labelMarathi="रस्त्याची रुंदी"
+                value={form.roadWidth}
+                onValueChange={(v) => setField("roadWidth", v)}
+                unit={form.widthUnit}
+                onUnitChange={(u) => setField("widthUnit", u)}
+                units={[{ label: "m", value: "m" }, { label: "km", value: "km" }]}
+                placeholder="0.00"
                 min={0}
-                suffixIcon={<Users size={13} />}
-                placeholder="0"
-                hint="Total farmers who benefit from this road"
+                step={0.01}
               />
+
             </div>
           </SectionCard>
         )}
 
-        {/* ── STEP 4: Encroachment ── */}
-        {form.roadType && (
-          <SectionCard step={4} icon={<AlertTriangle size={15} />} title="Encroachment Details" subtitle="अतिक्रमण तपशील — report any encroachment on this road segment" color="amber">
+{/* now i want to add a new section card for the order and extra info there is 4 input type text fields  */}
+ {/* ── STEP 4: Encroachment ── */}
+ {step2Unlocked && (
+          <SectionCard step={5} icon={<AlertTriangle size={15} />} title="Order and Extra Info" subtitle="आदेश तपशील" color="amber">
+            <div className="grid grid-cols-2 gap-4">
+              <InputBox
+                label="Details of the Competent Authority / Court Order"
+                labelMarathi="सक्षम अधिकारी / न्यायालय आदेश तपशील "
+                value={form.order}
+                onChange={(e) => setField("order", e.target.value)}
+              />
+              <InputBox
+                label="Terms and Conditions"
+                labelMarathi="अटी / शर्ती "
+                value={form.termsandconditions}
+                onChange={(e) => setField("termsandconditions", e.target.value)}
+              />
+              <InputBox
+                label="Tenure / Term Period"
+                labelMarathi="मुदत कालावधी "
+                value={form.tenure}
+                onChange={(e) => setField("tenure", e.target.value)}
+              />
+              <InputBox
+                label="Remarks "
+                labelMarathi="शेरा "
+                value={form.remarks}
+                onChange={(e) => setField("remarks", e.target.value)}
+              />
+            </div>
+          </SectionCard>  
+        )}
+
+        {/* ── STEP 5: Encroachment ── */}
+        {step2Unlocked && (
+          <SectionCard step={5} icon={<AlertTriangle size={15} />} title="Encroachment Details" subtitle="अतिक्रमण तपशील — report any encroachment on this road segment" color="amber">
             <RadioGroup
               label="Is there encroachment?"
               labelMarathi="अतिक्रमण असल्यास आहे का"
@@ -599,8 +694,8 @@ export default function Praroop2() {
         )}
 
         {/* ── STEP 5: Upload Documents ── */}
-        {form.roadType && (
-          <SectionCard step={5} icon={<FileText size={15} />} title="Upload Documents" subtitle="आवश्यक कागदपत्रे अपलोड करा — road photo, survey map, or supporting docs" color="teal">
+        {step2Unlocked && (
+          <SectionCard step={6} icon={<FileText size={15} />} title="Upload Documents" subtitle="आवश्यक कागदपत्रे अपलोड करा — road photo, survey map, or supporting docs" color="teal">
             <FileUpload
               files={uploadedFiles}
               onAdd={handleFilesAdd}
@@ -620,15 +715,20 @@ export default function Praroop2() {
       {/* ── Sticky Footer ── */}
       <div className="fixed bottom-0 left-0 right-0 z-40 flex items-center gap-3 px-6 py-3.5 bg-white border-t border-[var(--border)] shadow-[0_-4px_24px_rgba(0,0,0,0.07)]">
         <p className="flex-1 text-[11px] text-[var(--text-muted)]">
-          <span className="font-semibold text-[var(--text-secondary)]">Praroop-2</span>
+          <span className="font-semibold text-[var(--text-secondary)]">Praroop-3</span>
           {" · "}{district} › {taluka} › {village}
-          {form.roadType && (
+          {form.part && (
             <span className="ml-2 px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[10px] font-bold">
+              {form.part === "part1" ? "Part 1" : form.part === "part2" ? "Part 2" : "Part 3"}
+            </span>
+          )}
+          {form.roadType && (
+            <span className="ml-1.5 px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[10px] font-bold">
               Type {form.roadType}
             </span>
           )}
           {surveyTableRows.length > 0 && (
-            <span className="ml-2 px-1.5 py-0.5 rounded bg-[rgba(11,122,117,0.1)] text-[var(--primary)] text-[10px] font-bold">
+            <span className="ml-1.5 px-1.5 py-0.5 rounded bg-[rgba(11,122,117,0.1)] text-[var(--primary)] text-[10px] font-bold">
               {surveyTableRows.length} survey{surveyTableRows.length !== 1 ? "s" : ""} added
             </span>
           )}

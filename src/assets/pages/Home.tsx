@@ -6,6 +6,8 @@ import ActivityTimeline from "../components/ActivityTimeline";
 import NotificationWidget from "../components/NotificationWidget";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { getTalathiUser } from "../services/TalathiAuthservice";
+import { useAuthStore } from "../store/authStore";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -15,13 +17,52 @@ export default function Home() {
     const token = params.get("ferfartoken");
 
     if (!token) {
-      navigate("/logout?logout=true");
+      // navigate("/logout?logout=true");
       return;
     }
 
     localStorage.setItem("ferfartoken", token);
-    console.log("token saved", token);
+    //console.log("token saved", token);
+
+    getTalathiUser(token ?? "")
+      .then(({ token, userInfo }) => {
+
+        useAuthStore.getState().setAuth(token, userInfo);
+
+      })
+      .catch((error) => {
+
+        navigate("/session-expired", {
+          state: {
+            message: error.message,
+          },
+        });
+
+      });
+
   }, [navigate]);
+
+
+  // useEffect(() => {
+  //   const token = localStorage.getItem("ferfartoken");
+
+  //   getTalathiUser(token ?? "")
+  //     .then(({ token, userInfo }) => {
+
+  //       authStore.getState().setAuth(token, userInfo);
+
+  //     })
+  //     .catch((error) => {
+
+  //       navigate("/session-expired", {
+  //         state: {
+  //           message: error.message,
+  //         },
+  //       });
+
+  //     });
+
+  // }, []);
 
   return (
     <MainLayout>

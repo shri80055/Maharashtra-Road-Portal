@@ -190,7 +190,7 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 2px 6px;
-  font-family: monospace;
+  font-family: noto-sans-serif;
   flex-shrink: 0;
 }
 
@@ -877,7 +877,7 @@
 .activity-road-id {
   font-size: 12px;
   font-weight: 700;
-  font-family: monospace;
+  font-family: noto-sans-serif;
   color: rgba(15, 23, 42, 0.78);
   background: #f8fafc;
   border-radius: 6px;
@@ -1595,7 +1595,7 @@ html {
 
 body {
   margin: 0;
-  font-family: "Inter", sans-serif;
+  font-family: "Noto Sans", sans-serif;
   background: var(--bg-body);
   color: var(--text-primary);
 }
